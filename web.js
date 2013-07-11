@@ -10,7 +10,7 @@ app.get('/', function(request, response) {
 
 function readFromFile(file) {
   var buffer = fs.readFileSync(file);
-  return buffer.toString();
+  return buffer.toString('utf8',1, buffer.length-1);
 }
 
 var port = process.env.PORT || 5000;
