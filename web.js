@@ -8,7 +8,7 @@ app.get('/', function(request, response) {
   response.send(readFromFile('index.html'));
 });
 
-function readFromIndexHTM(file) {
+function readFromFile(file) {
   var buffer = fs.readFileSync(file);
   return buffer.toString();
 }
