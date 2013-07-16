@@ -23,6 +23,7 @@ References:
 
 var fs = require('fs');
 var program = require('commander');
+var rest = require('restler');
 var cheerio = require('cheerio');
 var HTMLFILE_DEFAULT = "index.html";
 var CHECKSFILE_DEFAULT = "checks.json";
@@ -61,14 +62,45 @@ var clone = function(fn) {
     return fn.bind({});
 };
 
-if(require.main == module) {
-    program
-        .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
-        .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
-        .parse(process.argv);
-    var checkJson = checkHtmlFile(program.file, program.checks);
+function getFileFromUrlAndCheck(url, doChecks) {
+    //get the file from the url
+    var resultFile = __dirname + '/heroku.html';
+    rest.get(url).on('complete',  function(result) {
+		if (result instanceof Error) {
+	  	  console.log('Error: ' + result.message);
+	  	  this.retry(5000); // try again after 5 sec
+		} else {
+		  fs.writeFileSync(resultFile, result);
+		  doChecks(resultFile);
+		 } 
+    });
+}
+
+var doChecks = function (fileToCheck) {
+	var  checkJson = checkHtmlFile(fileToCheck, program.checks);
     var outJson = JSON.stringify(checkJson, null, 4);
     console.log(outJson);
+}
+
+if(require.main == module) {
+    program
+        .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists))
+        .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
+        .option('-u, --url <url_to_check>', 'Path to url')
+        .parse(process.argv);
+         if(program.file && program.url) {
+	   console.log("Cant specify both file and url");
+	   return;
+	} else if(!program.file && !program.url) {
+	   console.log("Specify one of file or url");
+	   return;
+	  }
+    if(program.file) {
+		 doChecks(program.file);
+	}
+    else {
+		 getFileFromUrlAndCheck(program.url, doChecks);
+	}   
 } else {
     exports.checkHtmlFile = checkHtmlFile;
 }
